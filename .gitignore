@@ -1,0 +1,9 @@
+data/
+.vscode/
+.idea/
+.*
+*.xcf
+img/*
+htdocs/config.php
+!.gitignore
+

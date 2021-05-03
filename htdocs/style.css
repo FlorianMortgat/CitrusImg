@@ -1,0 +1,134 @@
+body{
+    padding: 0;
+    margin: 0;
+    font-family:Open Sans,Arial;
+    color:#010101;
+    font-size:16px;
+    line-height:1.4;
+    text-align:justify;
+}
+
+h1, h2 {
+    margin: 0.2em 0 0.4em 0;
+}
+
+
+div.banner {
+    position: relative;
+    background-image: url('banner-normal.jpg');
+    background-size: cover;
+    height: 9em;
+    width: 100%;
+    top: 0;
+    left: 0;
+}
+div#content {
+    position: relative;
+    padding:1em;
+    margin:2em auto;
+    max-width:800px;
+}
+
+details > summary > h2 {
+    display: inline-block;
+}
+
+details summary {
+    cursor: pointer;
+}
+
+details {
+    margin-bottom: 0.3em;
+}
+
+li {
+    margin-bottom: .5em;
+}
+
+table {
+    width: 100%;
+}
+
+col.c0 {
+    width: 30%;
+}
+col.c10 {
+    width: 55%;
+}
+
+textarea, input {
+    width: 100%;
+}
+
+button, input.fileinput {
+    padding: 1em;
+    background-color: #39c;
+    color: white;
+    font-size: 120%;
+}
+
+button.submit {
+    display: block;
+    width: 100%;
+}
+
+a{color:#07a}
+
+a:visited{color:#941352}
+
+blockquote{
+    color:#456;
+    margin-left:0;
+    font-size: 85%;
+}
+
+blockquote:before{
+    font-family:Times New Roman,Times,Arial;
+    color:#666;
+    content:open-quote;
+    font-size:2.2em;
+    font-weight:600;
+    float:left;
+    margin-top:0;
+    width:1.2rem
+}
+
+blockquote:after{
+    content:"";
+    display:block;
+    clear:both}
+
+@media screen and (max-width:500px){
+    body{
+        text-align:left
+    }
+}
+
+@media screen and (min-width: 2000px) {
+    div.banner {
+        background-image: url('banner.jpg');
+    }
+}
+
+.uploadoptions summary {
+    padding-bottom: 2em;
+}
+
+table, table tr, table td {
+    border-collapse: collapse;
+    border: none;
+}
+
+.uploadoptions table td {
+    padding: 1em 0 1em 0;
+    margin: 0;
+}
+
+.uploadoptions table tr:nth-child(odd) td {
+    border-top: solid 1px #afafaf;
+    background-color: #fcfeff;
+}
+.uploadoptions table tr:nth-child(even) td {
+    border-top: solid 1px #afafaf;
+    background-color: #fffefc;
+}
