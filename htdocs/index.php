@@ -300,7 +300,7 @@ function action_send() {
 		'author' => postVal('author'),
 		'description' => postVal('description'),
 		'license' => postVal('license'),
-		'dateposted' => date('Y-m-d h:i:s'),
+		'dateposted' => date('Y-m-d H:i:s'),
 	];
 	$ret = [];
 
@@ -321,7 +321,7 @@ function action_send() {
 			$w = $imgck->getImageWidth();
 			$h = $imgck->getImageHeight();
 			$imgck->resizeImage(
-				min($w, 900),
+				min($w, 700),
 				min($h, 900),
 				imagick::FILTER_CATROM,
 				0.7,
