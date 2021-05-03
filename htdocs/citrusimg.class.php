@@ -48,6 +48,14 @@ class ImageStorage extends PDO {
         return null;
     }
 
+    function getLast(int $nb=10)
+    {
+        $sql = 'SELECT rowid, imgid, mime, author, description, license, orig_name, dateposted FROM Pic ORDER BY rowid DESC LIMIT ?';
+        $ps = $this->prepare($sql);
+        $ps->execute([$nb]);
+        return $ps->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     function hasId($imgid)
     {
         $sql = 'SELECT rowid FROM Pic WHERE imgid = ? LIMIT 1';

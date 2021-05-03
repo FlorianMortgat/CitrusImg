@@ -10,6 +10,7 @@ body{
 
 h1, h2 {
     margin: 0.2em 0 0.4em 0;
+    text-align: left;
 }
 
 
@@ -131,4 +132,59 @@ table, table tr, table td {
 .uploadoptions table tr:nth-child(even) td {
     border-top: solid 1px #afafaf;
     background-color: #fffefc;
+}
+
+section.gallery {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.img-info-box {
+    width: 28%;
+    height: 370px;
+    display: inline-block;
+    border: solid 1px black;
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 10px;
+}
+
+.img-info-box div {
+    text-align: center;
+}
+
+.img-info-box img {
+    display: inline-block;
+    max-width: 100%;
+    max-height: 200px;
+}
+
+img.forum-preview {
+    max-width: 600px;
+}
+
+dl {
+    margin: 0;
+    font-size: 80%;
+}
+
+dl dt {
+    padding: 5 0;
+    margin: 0 0;
+    font-weight: bold;
+	background: #efeeee;
+	width: 100%; 
+}
+
+dl dt span {
+    display: inline-block;
+    padding-left: 6px;
+}
+
+dl dd {
+	margin: 2px 0; 
+	padding-left: 13px;
 }

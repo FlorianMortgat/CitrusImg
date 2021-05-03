@@ -12,6 +12,8 @@ include 'common.inc.php';
 include 'citrusimg.lib.php';
 include 'citrusimg.class.php';
 
+function getDiskStats() {
+	static $diskStats = null;
 	// espace disque maximum alloué pour le service : 15 Go
 	$duMaxService = 15 * 1024**3;
 
@@ -28,34 +30,26 @@ include 'citrusimg.class.php';
 
 	// espace disque disponible restant pour le service
 	$dfService = max(0, min(($dfServer - $dfMinServer)*500, $duMaxService - $duService));
-	$duPrecent = $dfService ? ($duService / $duMaxService) * 100 : 100;
-function showForm() {
-	// espace disque maximum alloué pour le service : 15 Go
-	$duMaxService = 15 * 1024**3;
+	$duPercent = $dfService ? ($duService / $duMaxService) * 100 : 100;
 
-	// espace disque en deçà duquel on bloque tout : 5 Go
-	$dfMinServer = 5 * 1024**3;
+	if ($diskStats === null) {
+		$diskStats = [
+			'duMaxService' => $duMaxService,
+			'dfMinServer' => $dfMinServer,
+			'dfServer' => $dfServer,
+			'duDB' => $duDB,
+			'duIMG' => $duIMG,
+			'duService' => $duService,
+			'dfService' => $dfService,
+			'duPercent' => $duPercent,
+		];
+	}
+	return $diskStats;
+}
 
-	// espace disque total restant sur le serveur
-	$dfServer = disk_free_space(IMG_DIR);
-
-	// espace disque occupé par le service (DB, IMG, total)
-	$duDB = is_file(DB_PATH) ? filesize(DB_PATH) : 0;
-	$duIMG = array_reduce(scandir(IMG_DIR), function ($c, $f) { return $c + (filesize(IMG_DIR . "/$f") ?: 0); }, 0);
-	$duService = $duDB + $duIMG;
-
-	// espace disque disponible restant pour le service
-	$dfService = max(0, min(($dfServer - $dfMinServer)*500, $duMaxService - $duService));
-	$duPrecent = $dfService ? ($duService / $duMaxService) * 100 : 100;
-
-?>
-<link rel="stylesheet" type="text/css" href="style.css"/>
-<script type="application/javascript" src="js/citrusimg.lib.js"></script>
-
-<body>
-	<div class="banner"></div>
-	<div id="content">
-		<div id="">
+function getAboutAndRulesSections() {
+	ob_start();
+	?>
 		<h1>Hébergement d’images pour agrumes-passion.com</h1>
 			<details id="">
 				<summary> <h2>Règles d’utilisation</h2> </summary>
@@ -111,118 +105,142 @@ function showForm() {
 				faire évoluer le programme.
 				</p>
 				<p>
-				Sur l’espace alloué au service, sont encore disponible : <?php
-					echo humanStorageSize($dfService);
-					printf(' (utilisés : %s)', humanStorageSize($duService));
-				?>
+				Sur l’espace alloué au service, sont encore disponible : %s (utilisés : %s)
 				</p>
 			</details>
-		</div>
-		<div id="">
-			<form enctype="multipart/form-data" action="" method="POST">
-				<!-- MAX_FILE_SIZE must precede the file input field -->
-				<input type="hidden" name="MAX_FILE_SIZE" value="<?php echo 8 * 1024**2; ?>" />
-				<table>
-					<colgroup>
-						<col class="c0" />
-						<col class="c1" />
-					</colgroup>
-					<tbody>
-						<tr>
-							<td>
-				<label for="imgfiles[]">Choisissez une ou plusieurs images à envoyer :</label>
-							</td>
-							<td>
-				<input name="imgfiles[]"
-				       type="file"
-				       accept="image/png, image/jpeg, image/gif, image/svg, image/webp"
-					   multiple="multiple"
-					   class="fileinput"
-					   required
-					    />
-							</td>
-						</tr>
-						<tr>
-							<td>
-				<label for="author">Votre pseudo (optionnel) :</label>
-							</td>
-							<td>
-				<input name="author" type="text" />
-							</td>
-						</tr>
-						<tr>
-							<td>
-				<label for="description">Une description (optionnelle) :</label>
-							</td>
-							<td>
-				<textarea name="description"></textarea>
-							</td>
-						</tr>
-						<tr><td colspan="2">
-							<details class="uploadoptions">
-						<summary class="">Options supplémentaires</summary>
-						<table class=""><colgroup><col class="c10" /><col class="c11" /></colgroup><tbody>
-						<tr>
-							<td>
-				<label for="preservequality" title="Si votre photo est exceptionnelle, pourquoi ne pas la mettre sur Wikimedia Commons ?">Garder la qualité d’origine si possible</label>
-							</td>
-							<td>
-				<input type="checkbox" name="preservequality">
-							</td>
-						</tr>
-						<tr>
-							<td>
-				<label for="license">Licence : peut-on réutiliser votre photo ailleurs ?</label>
-							</td>
-							<td>
-				<blockquote id="licenseHelp"></blockquote>
-				<datalist id="licenses">
-					<option id="CC0" value="CC0"></option>
-					<option id="CCBY" value="CC BY"></option>
-					<option id="CCBYNC" value="CC BY-NC"></option>
-					<option id="CCBYSA" value="CC BY-SA"></option>
-					<option id="CCBYNCSA" value="CC BY-NC-SA"></option>
-					<option id="APSITE" value="AP+SITE"></option>
-				</datalist>	
-				<input name="license" type="text" list="licenses" placeholder="CC BY" />
-							</td>
-						</tr>
-						</tbody>
-						</table>
-						</details></td></tr>
-					</tbody>
-				</table>
-				<!-- Name of input element determines name in $_FILES array -->
+	<?php
 
-				<button name="action" value="send" class="submit" >Envoyer l’image</button>
+	$diskStats = getDiskStats();
+	return sprintf(
+		ob_get_clean(),
+		humanStorageSize($diskStats['dfService']),
+		humanStorageSize($diskStats['duService'])
+	);
+}
 
-			</form>
-		</div>
-	</div>
-</body>
+function getForm() {
+	ob_start();
+	echo getAboutAndRulesSections();
+	?>
+	<form enctype="multipart/form-data" action="" method="POST">
+		<!-- MAX_FILE_SIZE must precede the file input field -->
+		<input type="hidden" name="MAX_FILE_SIZE" value="<?php echo 8 * 1024**2; ?>" />
+		<table>
+			<colgroup>
+				<col class="c0" />
+				<col class="c1" />
+			</colgroup>
+			<tbody>
+				<tr>
+					<td>
+						<label for="imgfiles[]">Choisissez une ou plusieurs images à envoyer :</label>
+					</td>
+					<td>
+						<input name="imgfiles[]"
+							type="file"
+							accept="image/png, image/jpeg, image/gif, image/svg, image/webp"
+							multiple="multiple"
+							class="fileinput"
+							required
+						/>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<label for="author">Votre pseudo (optionnel) :</label>
+					</td>
+					<td>
+						<input name="author" type="text" />
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<label for="description">Une description (optionnelle) :</label>
+					</td>
+					<td>
+						<textarea name="description"></textarea>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="2">
+						<details class="uploadoptions">
+							<summary class="">Options supplémentaires</summary>
+							<table class="">
+								<colgroup>
+									<col class="c10" />
+									<col class="c11" />
+								</colgroup>
+								<tbody>
+									<tr>
+										<td>
+											<label for="preservequality"
+												title="Si votre photo est exceptionnelle, pourquoi ne pas la mettre sur Wikimedia Commons ?"
+											>
+											Garder la qualité d’origine si possible
+											</label>
+										</td>
+										<td>
+											<input type="checkbox" name="preservequality">
+										</td>
+									</tr>
+									<tr>
+										<td>
+											<label for="license">Licence : peut-on réutiliser votre photo ailleurs ?</label>
+										</td>
+										<td>
+											<blockquote id="licenseHelp"></blockquote>
+											<datalist id="licenses">
+												<option id="CC0" value="CC0"></option>
+												<option id="CCBY" value="CC BY"></option>
+												<option id="CCBYNC" value="CC BY-NC"></option>
+												<option id="CCBYSA" value="CC BY-SA"></option>
+												<option id="CCBYNCSA" value="CC BY-NC-SA"></option>
+												<option id="APSITE" value="AP+SITE"></option>
+											</datalist>	
+											<input name="license" type="text" list="licenses" placeholder="CC BY" />
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</details>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+		<!-- Name of input element determines name in $_FILES array -->
+	
+		<button name="action" value="send" class="submit" >Envoyer l’image</button>
+	</form>
 
+	<?php
+	return sprintf(
+		ob_get_clean()
+	);
+}
 
-<!--
-<div id="dropzone">
-</div>
--->
-
-<?php
+function getHTMLPage($content) {
+	ob_start();
+	?>
+	<html>
+		<head>
+			<link rel="stylesheet" type="text/css" href="style.css"/>
+			<script type="application/javascript" src="js/citrusimg.lib.js"></script>
+			<meta charset="utf-8" />
+			<title>CitrusImg</title>
+		</head>
+		<body>
+			<div class="banner"></div>
+			<div id="content">%s</div>
+		</body>
+	</html>
+	<?php
+	return sprintf(
+		ob_get_clean(),
+		$content
+	);
 }
 
 define('RESIZE_THRESHOLD', 1 * 1024**2);
-
-if ($dfServer < 5* 1024**3) {
-	echo 'Le service n’accepte plus d’images jusqu’à nouvel ordre car le disque dur'
-		. ' du serveur est presque plein.';
-	exit;
-}
-if ($duDB + $duIMG >= $duMaxService) {
-	echo 'Le service n’accepte plus d’images jusqu’à nouvel ordre car la taille'
-		. ' totale des images hébergées et de la base de données dépasse le quota'
-		. ' maximum.';
-	exit;
-}
 
 function action_get_image() {
 	/*
@@ -266,6 +284,16 @@ function action_send() {
 	5) on stocke l’image
 	6) on met un cookie 'auteur'
 	*/
+	$diskStats = getDiskStats();
+	if ($diskStats['dfServer'] < 5* 1024**3) {
+		echo getHTMLPage('Plus d’espace disque.');
+		exit;
+	}
+	if ($diskStats['duDB'] + $diskStats['duIMG'] >= $diskStats['duMaxService']) {
+		echo getHTMLPage('Quota dépassé.');
+		exit;
+	}
+
 	$preservequality = postVal('preservequality') === 'on';
 	$db = ImageStorage::getDB();
 	$commonImgData = [
@@ -309,65 +337,94 @@ function action_send() {
 			'path' => $newPath,
             'orig_name' => $f['name'],
 		] + $commonImgData;
-		$imgurl = sprintf(
-			'%s://%s/index.php?action=get_image&imgid=%s',
-			$_SERVER['REQUEST_SCHEME'],
-			$_SERVER['HTTP_HOST'],
-			$imgid
-		);
 
+		$ret[] = getImagePreviewAndBBCode($imgData);	
 
-		$ret[] = "Pour insérer l’image, copiez ce code et collez-le directement sur"
-			. " le forum (sans cliquer sur le bouton « image »). Ne perdez pas ce code !";
-		$ret[] = '<br/>';
-		$ret[] = sprintf('<a href="%s://%s/index.php">Retourner à l’accueil</a>', $_SERVER['REQUEST_SCHEME'], $_SERVER['HTTP_HOST']);
-		$ret[] = '<br/>';
-		$ret[] = "<textarea>[img]" . $imgurl . "[/img]</textarea>\n\n";
-		$ret[] = '<br/>';
-		$ret[] = '<br/>';
-		$ret[] = "<img src=\"$imgurl\" style=\"max-width: 600px;\" />";
-		$ret[] = '<br/>';
-		$ret[] = '<br/>';
-		$ret[] = '<br/>';
-		$ret[] = '<br/>';
-		$ret[] = '<br/>';
 		$db->storeImageData($imgData);
 	}
+	$pageContent = '';
+	$pageContent .= implode("\n", $ret);
 
-?>
-<html><head>
-<link rel="stylesheet" type="text/css" href="style.css"/>
-<script type="application/javascript" src="js/citrusimg.lib.js"></script>
-</head><body>
-	<div class="banner"></div>
-	<div id="content">
-<?php
-	return implode("\n", $ret);
+	echo getHTMLPage($pageContent);
+}
+
+function getImagePreviewAndBBCode($imgData) {
+	ob_start();
+	?>
+	<div class="image-bb-preview" style="margin-bottom: 6em;">
+		<p>
+		Pour insérer l’image, copiez ce code et collez-le directement sur le
+		forum, sans cliquer sur le bouton « image ». Ne perdez pas ce code !
+		</p>
+		<p><textarea>[img]%s[/img]</textarea></p>
+		<p>
+			<img class="forum-preview" src="%s" style="max-width: 600px;" />
+			<br/>
+			<a href="%s://%s/index.php">Retour à l’accueil</a>
+		</p>
+	</div>
+	<?php
+	return sprintf(
+		ob_get_clean(),
+		getImgURL($imgData['imgid']),
+		getImgURL($imgData['imgid']),
+		$_SERVER['REQUEST_SCHEME'],
+		$_SERVER['HTTP_HOST']
+	);
+}
+
+function isDiskNearlyFull() {
+	$diskStats = getDiskStats();
+	return $diskStats['dfServer'] < DISK_USAGE_ALERT_THRESHOLD;
+}
+
+function isQuotaExceeded() {
+	$diskStats = getDiskStats();
+	return $diskStats['duDB'] + $diskStats['duIMG'] >= DISK_USAGE_QUOTA;
 }
 
 function handle_get() {
-	showForm();
+	$diskStats = getDiskStats();
+	$content = '';
+	$showForm = true;
+	if (isDiskNearlyFull()) {
+		$showForm = false;
+		$content = 'Le service n’accepte plus d’images jusqu’à nouvel ordre car'
+		.' le disque dur du serveur est presque plein.';
+	}
+	if (isQuotaExceeded()) {
+		$showForm = false;
+		$content = 'Le service n’accepte plus d’images jusqu’à nouvel ordre car'
+		.' la taille totale des images hébergées et de la base de données'
+		.' dépasse le quota maximum.';
+	}
+	if ($showForm) {
+		$content .= getForm();
+	}
+	$content .= getLast10();
+	echo getHTMLPage($content);
 }
 
-function showLast10() {
+function getLast10() {
 	/*
 	1) récupère les ID des 10 dernières images ajoutées
 	2) affiche les 10 dernières images
 	*/
-}
-
-/**
- * Reorders one value from the $_FILES array.
- */
-function repackFiles($name) {
-	$F = $_FILES[$name];
-	$ret = [];
-	for ($i = 0; $i < count($F['name']); $i++) {
-		$f = [];
-		foreach ($F as $k => $v) { $f[$k] = $v[$i]; }
-		$ret[] = $f;
-	}
-	return $ret;
+	ob_start();
+	$db = ImageStorage::GetDB();
+	$imgDatas = $db->getLast(10);
+	$count = count($imgDatas);
+	?>
+	<h2>Les %d dernières images</h2>
+	<section class="gallery">
+		<?php
+		foreach ($imgDatas as $imgData) {
+			echo getImgInfoBox($imgData);
+		}
+		?>
+	</section>
+	<?php
+	return sprintf(ob_get_clean(), $count);
 }
 
 function generateId() {
