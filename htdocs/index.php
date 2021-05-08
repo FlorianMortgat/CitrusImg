@@ -313,7 +313,7 @@ function action_get_image() {
         $orig_name = 'photo';
     }
 	header('Content-Type: ' . $imgData['mime']);
-	header('Cache-Control: public, max-age=4');
+	header('Cache-Control: public, max-age=31557600');
 	header('Content-Length: ' . filesize($imgData['path']));
     header(sprintf('Content-Disposition: inline; filename="%s"', $orig_name));
 	echo file_get_contents($imgData['path']);
