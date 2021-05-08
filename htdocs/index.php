@@ -12,24 +12,52 @@ include 'common.inc.php';
 include 'citrusimg.lib.php';
 include 'citrusimg.class.php';
 
+define('RESIZE_THRESHOLD', 1 * 1024**2);
+
+/**
+ * Returns an array with some storage (available/used) info
+ * 
+ * @return array
+ */
 function getDiskStats() {
 	static $diskStats = null;
 	// espace disque maximum alloué pour le service : 15 Go
-	$duMaxService = 15 * 1024**3;
+	$duMaxService = DISK_USAGE_QUOTA;
 
 	// espace disque en deçà duquel on bloque tout : 5 Go
-	$dfMinServer = 5 * 1024**3;
+	$dfMinServer = DISK_USAGE_ALERT_THRESHOLD;
 
 	// espace disque total restant sur le serveur
 	$dfServer = disk_free_space(IMG_DIR);
 
 	// espace disque occupé par le service (DB, IMG, total)
+	// TODO (?) éviter d’utiliser scandir quand il y aura beaucoup
+	// d'images… idéalement, il faudrait faire un répertoire par mois
+	// l’avantage étant que ça pourrait s’appliquer rétrospectivement
 	$duDB = is_file(DB_PATH) ? filesize(DB_PATH) : 0;
-	$duIMG = array_reduce(scandir(IMG_DIR), function ($c, $f) { return $c + (filesize(IMG_DIR . "/$f") ?: 0); }, 0);
+	$duIMG = array_reduce(
+		scandir(IMG_DIR),
+		function ($c, $f) {
+			return $c + (filesize(IMG_DIR . "/$f") ?: 0);
+		},
+		0
+	);
 	$duService = $duDB + $duIMG;
 
 	// espace disque disponible restant pour le service
-	$dfService = max(0, min(($dfServer - $dfMinServer)*500, $duMaxService - $duService));
+	// = combien d’espace disque puis-je consommer avant d’arriver soit à mon
+	// quota, soit à ce qu’il ne reste plus que le minimum acceptable sur mon
+	// serveur ?
+	$dfService = max(
+		// une valeur négative n’aurait aucun sens
+		0,
+		min(
+			// 
+			($dfServer - $dfMinServer),
+			// 
+			$duMaxService - $duService
+		)
+	);
 	$duPercent = $dfService ? ($duService / $duMaxService) * 100 : 100;
 
 	if ($diskStats === null) {
@@ -47,6 +75,11 @@ function getDiskStats() {
 	return $diskStats;
 }
 
+/**
+ * Returns the About section and the Rules section
+ * 
+ * @return string
+ */
 function getAboutAndRulesSections() {
 	ob_start();
 	?>
@@ -118,6 +151,10 @@ function getAboutAndRulesSections() {
 	);
 }
 
+/**
+ * Returns the image posting form
+ * @return string
+ */
 function getForm() {
 	ob_start();
 	echo getAboutAndRulesSections();
@@ -218,6 +255,12 @@ function getForm() {
 	);
 }
 
+/**
+ * Puts the page template (<html> and such) around $contents
+ * and returns it.
+ * @param string $contents
+ * @return string
+ */
 function getHTMLPage($content) {
 	ob_start();
 	?>
@@ -240,8 +283,10 @@ function getHTMLPage($content) {
 	);
 }
 
-define('RESIZE_THRESHOLD', 1 * 1024**2);
-
+/**
+ * Prints out the image file corresponding to the `imgid` query parameter.
+ * @return void
+ */
 function action_get_image() {
 	/*
 	1) chercher l’image dans la bdd
@@ -274,6 +319,11 @@ function action_get_image() {
 	echo file_get_contents($imgData['path']);
 }
 
+/**
+ * Saves the image file sent with the HTTP request, resizes it if needed and
+ * stores its metadata into the database, then prints out a page where the
+ * user can see their image and get the BBCode for including it in a forum.
+ */
 function action_send() {
 	/*
 	1) vérifier la taille
@@ -282,7 +332,7 @@ function action_send() {
 	4) si image volumineuse et option "grande image" non cochée, on convertit
 	   avec imagemagick
 	5) on stocke l’image
-	6) on met un cookie 'auteur'
+	6) TODO: on met un cookie 'auteur'
 	*/
 	$diskStats = getDiskStats();
 	if ($diskStats['dfServer'] < 5* 1024**3) {
@@ -348,6 +398,13 @@ function action_send() {
 	echo getHTMLPage($pageContent);
 }
 
+/**
+ * Returns a HTML div containing the image corresponding to $imgData
+ * and a textarea with the BBCode for copy-pasting onto a forum.
+ * 
+ * @param array $imgData
+ * @return string
+ */
 function getImagePreviewAndBBCode($imgData) {
 	ob_start();
 	?>
@@ -373,16 +430,37 @@ function getImagePreviewAndBBCode($imgData) {
 	);
 }
 
+/**
+ * Returns true if the available disk space on the hosting platform is less than
+ * the alert threshold (@see config.php)
+ * 
+ * @return bool
+ */
 function isDiskNearlyFull() {
 	$diskStats = getDiskStats();
 	return $diskStats['dfServer'] < DISK_USAGE_ALERT_THRESHOLD;
 }
 
+/**
+ * Returns true if the application (including database and images, but not
+ * counting the source code and assets) takes up more storage space than the
+ * allotted quota (@see config.php)
+ * 
+ * @return bool
+ */
 function isQuotaExceeded() {
 	$diskStats = getDiskStats();
 	return $diskStats['duDB'] + $diskStats['duIMG'] >= DISK_USAGE_QUOTA;
 }
 
+/**
+ * Handles all GET queries except queries with an `action` parameter if there
+ * is a function called `action_XYZ` (where XYZ is the value of `action`).
+ * @TODO: move it to common.inc.php and make a default action handler for
+ *        consistency
+ *
+ * @return void
+ */
 function handle_get() {
 	$diskStats = getDiskStats();
 	$content = '';
@@ -405,6 +483,12 @@ function handle_get() {
 	echo getHTMLPage($content);
 }
 
+/**
+ * Returns a HTML section with a gallery of the last 10 uploaded images along
+ * with their metadata.
+ * 
+ * @return string
+ */
 function getLast10() {
 	/*
 	1) récupère les ID des 10 dernières images ajoutées
@@ -427,6 +511,12 @@ function getLast10() {
 	return sprintf(ob_get_clean(), $count);
 }
 
+/**
+ * Returns a random ID meant to be unique (collisions are possible, but very
+ * unlikely)
+ * 
+ * @return string
+ */
 function generateId() {
 	return uniqid();
 }
