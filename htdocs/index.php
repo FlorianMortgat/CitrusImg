@@ -12,7 +12,7 @@ include 'common.inc.php';
 include 'citrusimg.lib.php';
 include 'citrusimg.class.php';
 
-define('RESIZE_THRESHOLD', 1 * 1024**2);
+define('RESIZE_THRESHOLD', 0);
 
 /**
  * Returns an array with some storage (available/used) info
@@ -362,6 +362,9 @@ function action_send() {
 		}
 		$imgid = generateId(); while ($db->hasId($imgid)) { $imgid = generateId(); }
 		$newPath = IMG_DIR . '/' . $imgid;		
+		if (filesize($f['tmp_name']) === 0) {
+			throw new Exception('uploaded file is empty');
+		}
 		if (!move_uploaded_file($f['tmp_name'], $newPath)) {
 			throw new Exception('unable do write to ' . $newPath);
 		}
@@ -495,8 +498,9 @@ function getLast10() {
 	2) affiche les 10 dernières images
 	*/
 	ob_start();
+	$n = intval(getVal('showlastn', 10));
 	$db = ImageStorage::GetDB();
-	$imgDatas = $db->getLast(10);
+	$imgDatas = $db->getLast($n);
 	$count = count($imgDatas);
 	?>
 	<h2>Les %d dernières images</h2>
