@@ -482,7 +482,7 @@ function handle_get() {
 	if ($showForm) {
 		$content .= getForm();
 	}
-	$content .= getLast10();
+	$content .= getLastN();
 	echo getHTMLPage($content);
 }
 
@@ -492,13 +492,14 @@ function handle_get() {
  * 
  * @return string
  */
-function getLast10() {
+function getLastN() {
 	/*
 	1) récupère les ID des 10 dernières images ajoutées
 	2) affiche les 10 dernières images
 	*/
 	ob_start();
 	$n = intval(getVal('showlastn', 10));
+	$n = min(500, $n);
 	$db = ImageStorage::GetDB();
 	$imgDatas = $db->getLast($n);
 	$count = count($imgDatas);
@@ -507,7 +508,7 @@ function getLast10() {
 	<section class="gallery">
 		<?php
 		foreach ($imgDatas as $imgData) {
-			echo getImgInfoBox($imgData);
+			echo str_replace('%', '%%', getImgInfoBox($imgData));
 		}
 		?>
 	</section>
