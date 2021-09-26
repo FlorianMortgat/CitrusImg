@@ -138,17 +138,20 @@ function getAboutAndRulesSections() {
 				faire évoluer le programme.
 				</p>
 				<p>
-				Sur l’espace alloué au service, sont encore disponible : %s (utilisés : %s)
+				Sur l’espace alloué au service, sont encore disponibles : %s (utilisés : %s, soit
+				%.02f&percnt;)
 				</p>
 			</details>
 	<?php
 
 	$diskStats = getDiskStats();
-	return sprintf(
+	$ret = sprintf(
 		ob_get_clean(),
 		humanStorageSize($diskStats['dfService']),
-		humanStorageSize($diskStats['duService'])
+		humanStorageSize($diskStats['duService']),
+		100 * $diskStats['duService'] / max(1, DISK_USAGE_QUOTA)
 	);
+	return $ret;
 }
 
 /**
