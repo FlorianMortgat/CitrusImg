@@ -186,5 +186,6 @@ dl dt span {
 
 dl dd {
 	margin: 2px 0; 
-	padding-left: 13px;
+	padding-left: 1em;
+	padding-right: 1em;
 }
