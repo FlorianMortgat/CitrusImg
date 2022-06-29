@@ -15,6 +15,7 @@ class ImageStorage extends PDO {
 	/**
 	 * 
 	 */
+	const version = '0.2.0';
 	const tables = [
 		'Pic',
 		//'Tag',
@@ -27,7 +28,60 @@ class ImageStorage extends PDO {
 		parent::__construct('sqlite://' . DB_PATH);
 		if (!$isDbInitialized) {
 			$this->createTables();
+		} elseif (!$this->isDbUpToDate()) {
+			$this->upgrade();
 		}
+	}
+
+	function isDBUpToDate()
+	{
+		// 1) test if the config table exists. If not, version is assumed to be
+		//    0.1.0
+		$installedVersion = "0.1.0";
+
+		$ps = $this->query('SELECT name FROM sqlite_master WHERE type="table" AND name = "Config"');
+		if (false !== $ps->fetch(PDO::FETCH_OBJ)) {
+			// table "config" exists
+			$ps = $this->query('SELECT value FROM config WHERE name = "installed_version"');
+			if ($obj = $ps->fetch(PDO::FETCH_OBJ)) {
+				// table "config" has a conf named "installed_version"
+				$installedVersion = $obj->installed_version;
+			}
+		}
+		
+		// find directories matching version upgrades
+		$directories = array_filter(
+			glob(SQL_DIR . '/upgrades/*', GLOB_ONLYDIR),
+			function ($dirname) use ($installedVersion) {
+				$dirname = basename($dirname);
+				return (
+					// directory name must look like a version number (X.Y)
+					preg_match('/^\d+\.\d+$/', $dirname)
+					&&
+					// directory version must be (strictly) higher than installed
+					version_compare($dirname, $installedVersion) > 0
+				);
+			}
+		);
+		usort($directories, 'version_compare');
+		foreach ($directories as $directory) {
+			$versionJsonFile = $directory . '/' . basename($directory) . '.json';
+			$versionJson = json_decode(
+				file_get_contents($versionJsonFile, false, null, 0, 65535),
+				true
+			);
+			
+		}
+
+
+		// 3) find upgrade scripts
+		// 4) run upgrade scripts
+		// 5) write new version if no errors occurred
+	}
+
+	function upgrade()
+	{
+
 	}
 
 	/**
@@ -134,5 +188,22 @@ class ImageStorage extends PDO {
 				$this->exec($query);
 			}
 		}
+	}
+
+	private function getCurrentVersion()
+	{
+
+	}
+
+	/**
+	 * At startup, if the application detects a version upgrade, it
+	 * checks for new queries to run and runs them.
+	 */
+	private function upgrade()
+	{
+		$sql = 'SELECT name FROM sqlite_master WHERE type="table" AND name="Config"';
+		$ps = $this->prepare($sql);
+		$ps->execute();
+		return $ps->fetch_all();
 	}
 }

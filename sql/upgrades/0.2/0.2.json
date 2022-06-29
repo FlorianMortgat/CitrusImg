@@ -1,0 +1,6 @@
+{
+    "sql_files": [
+        "config.table.sql"
+    ],
+    "php_scripts": []
+}
